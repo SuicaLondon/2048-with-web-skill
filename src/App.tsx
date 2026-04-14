@@ -17,29 +17,40 @@ const tileStyleMap: Record<number, string> = {
 }
 
 function App() {
-  const {
-    grid,
-    score,
-    bestScore,
-    moveCount,
-    status,
-    restartGame,
-    undo,
-    handleKeyboardInput,
-    handleSwipe,
-  } = useGameStore((state) => ({
-    grid: state.grid,
-    score: state.score,
-    bestScore: state.bestScore,
-    moveCount: state.moveCount,
-    status: state.status,
-    restartGame: state.restartGame,
-    undo: state.undo,
-    handleKeyboardInput: state.handleKeyboardInput,
-    handleSwipe: state.handleSwipe,
-  }))
+  const grid = useGameStore((state) => state.grid)
+  const score = useGameStore((state) => state.score)
+  const bestScore = useGameStore((state) => state.bestScore)
+  const moveCount = useGameStore((state) => state.moveCount)
+  const status = useGameStore((state) => state.status)
+  const lastAction = useGameStore((state) => state.lastAction)
+  const restartGame = useGameStore((state) => state.restartGame)
+  const undo = useGameStore((state) => state.undo)
+  const handleKeyboardInput = useGameStore((state) => state.handleKeyboardInput)
+  const handleSwipe = useGameStore((state) => state.handleSwipe)
 
   const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const previousGridRef = useRef(grid.map((row) => [...row]))
+
+  const changedCells = new Set<string>()
+  const previousGrid = previousGridRef.current
+  for (let rowIndex = 0; rowIndex < grid.length; rowIndex += 1) {
+    for (let colIndex = 0; colIndex < grid[rowIndex].length; colIndex += 1) {
+      if (grid[rowIndex][colIndex] !== previousGrid[rowIndex][colIndex]) {
+        changedCells.add(`${rowIndex}-${colIndex}`)
+      }
+    }
+  }
+
+  const moveAnimationClass =
+    lastAction === 'move_left'
+      ? 'tile-move-left'
+      : lastAction === 'move_right'
+        ? 'tile-move-right'
+        : lastAction === 'move_up'
+          ? 'tile-move-up'
+          : lastAction === 'move_down'
+            ? 'tile-move-down'
+            : ''
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -53,6 +64,10 @@ function App() {
     return () => window.removeEventListener('keydown', listener)
   }, [handleKeyboardInput])
 
+  useEffect(() => {
+    previousGridRef.current = grid.map((row) => [...row])
+  }, [grid])
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f7f3d6,_#dfcc9c_40%,_#c8af72)] px-4 py-8 text-stone-800">
       <section className="mx-auto w-full max-w-xl rounded-3xl border border-stone-700/20 bg-stone-50/80 p-5 shadow-[0_14px_40px_rgba(50,34,0,0.25)] backdrop-blur-sm sm:p-7">
@@ -61,7 +76,9 @@ function App() {
             <h1 className="font-display text-5xl font-bold tracking-tight text-stone-900">
               2048
             </h1>
-            <p className="mt-1 text-sm text-stone-700">方向鍵 / WASD 移動，U 撤銷，R 重新開始</p>
+            <p className="mt-1 text-sm text-stone-700">
+              Arrow keys / WASD to move, U to undo, R to restart
+            </p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold uppercase tracking-wide text-stone-700">
             <div className="rounded-xl bg-stone-800 px-3 py-2 text-stone-100">
@@ -95,9 +112,9 @@ function App() {
             Undo
           </button>
           <div className="ml-auto flex items-center text-sm font-medium text-stone-700">
-            {status === 'won' && '達成 2048，還可以繼續玩'}
-            {status === 'over' && '遊戲結束，按 New Game'}
-            {status === 'playing' && '進行中'}
+            {status === 'won' && 'You reached 2048. Keep going!'}
+            {status === 'over' && 'Game over. Press New Game.'}
+            {status === 'playing' && 'In progress'}
           </div>
         </div>
 
@@ -126,7 +143,11 @@ function App() {
               return (
                 <div
                   key={`${rowIndex}-${colIndex}`}
-                  className={`aspect-square rounded-xl font-display text-2xl font-bold shadow-inner transition ${colorClass} flex items-center justify-center sm:text-3xl`}
+                  className={`aspect-square rounded-xl font-display text-2xl font-bold shadow-inner transition ${colorClass} ${
+                    value !== 0 && changedCells.has(`${rowIndex}-${colIndex}`) && moveAnimationClass
+                      ? moveAnimationClass
+                      : ''
+                  } flex items-center justify-center sm:text-3xl`}
                 >
                   {value === 0 ? '.' : value}
                 </div>
