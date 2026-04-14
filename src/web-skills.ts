@@ -2,6 +2,17 @@ import { createWebSkillGenerator } from 'web-skill'
 import { z } from 'zod'
 import { useGameStore } from './store/useGameStore'
 
+const gridRowSchema = z.array(z.number().int().nonnegative()).length(4)
+const gridSchema = z.array(gridRowSchema).length(4)
+const gameStatusSchema = z.enum(['ready', 'playing', 'won', 'over'])
+const serializedGameStateSchema = z.object({
+  grid: gridSchema,
+  score: z.number().int().nonnegative(),
+  bestScore: z.number().int().nonnegative(),
+  moveCount: z.number().int().nonnegative(),
+  status: gameStatusSchema,
+})
+
 export const webSkills = createWebSkillGenerator()
 
 const game2048Skill = webSkills.newSkill({
@@ -52,4 +63,10 @@ game2048Skill.addFunction(() => useGameStore.getState().undo(), 'undo', {
   description: 'Undo the previous successful move.',
   inputSchema: z.object({}).default({}),
   outputSchema: z.boolean(),
+})
+
+game2048Skill.addFunction(() => useGameStore.getState().serializeState(), 'getState', {
+  description: 'Get the current serializable game state.',
+  inputSchema: z.object({}).default({}),
+  outputSchema: serializedGameStateSchema,
 })
